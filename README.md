@@ -21,6 +21,8 @@ Para compilar y ejecutar el programa se necesitan los siguientes requisitos:
 
 ## Uso
 
+[![How to Make a PB&J Sandwich](https://img.youtube.com/vi/vvvPW7LsL1c/0.jpg)](https://www.youtube.com/watch?v=vvvPW7LsL1c)
+
 1. Clonar el repositorio en su máquina local.
 2. Navegar hasta el directorio raíz del proyecto.
 3. Crear un directorio "build" dentro del directorio raíz.
