@@ -3,7 +3,6 @@
 
 #include <graphics.h>
 
-
 typedef struct registro
 {
     struct registro *ant,*sig;
@@ -18,12 +17,13 @@ typedef struct
       long dir_sig;  
       char tipo;
       int longitud;
+      int llavePk;
 }DatosAtributo;
 
 typedef struct atributo
 {
      struct atributo *ant, *sig;
-     DatosAtributo datAtrib; 
+     DatosAtributo datAtrib;  
 }Atributo;
 
 typedef struct 
@@ -33,7 +33,9 @@ typedef struct
      long dir_datos;
      long dir_atributo;
      long dir_PK;
-     long dir_sig;
+     long dir_sig;        
+     char tipollavePk;
+     int tamllavePk;
 }DatosEntidad;
 
 typedef struct entidad
@@ -86,14 +88,103 @@ void dibujaAtributo(DatosAtributo atri,int x,int y);
 void MenuRegistro(bool *elimina,Entidades arch,int x,int y);
 Registro *creaRegistro();
 void creaListaRegistro(Entidad *enti,Registro *reg);
-void agregaRegistro(Entidad *enti,Registro *reg);  
-void dibujaRegistros(Entidad *ent);
-void dibujaRegistro(DatosAtributo atri,int x,int y);
+bool agregaRegistro(Entidad *enti,Registro *reg);  
 void eliminaRegistro(Entidad *enti,Registro *reg); 
 void modificaRegistro(Entidad *enti,Registro *reg);      
-Registro *seleccionaRegistros(Entidad *ent);
+Registro *buscaRegistros(Entidad *ent);
 char dialogBoxTipo();
 bool dialogBoxBool();
+int dialogBoxLlave(Entidad *enti);
+
+Registro *buscaRegistros(Entidad *ent);
+void dibujaRegistro(Registro *registroN,Atributo *prim);
+Registro *buscaRegistroPk(Entidad *ent,int llaveEntero);
+Registro *buscaRegistroPk(Entidad *ent,char llaveCadena[]);
+Registro *buscaRegistroPk(Entidad *ent,bool bol);
+
+
+void dibujaRegistros(Entidad *ent)
+{
+     system("cls");   
+     cleardevice();
+     FILE *Archivo = fopen("Archivo.bet","rb");
+     long dir;
+     long dato;
+     bool bol;
+     int numAtri =0;
+     int x,y; 
+     int i,j;
+     Atributo *atriCore = ent->prim;
+     Registro *reg = ent->rp;
+     Atributo *atri = ent->prim;
+
+      
+    while(atriCore)
+    {
+           numAtri+=1;
+            atriCore = atriCore->sig;
+    }
+    atriCore = ent->prim; 
+    x=850/(numAtri);
+    i=j=0;
+    y=30;
+    while(atriCore)
+    {
+           outtextxy(25+x*i,30+y*j,atriCore->datAtrib.nombre);
+           rectangle(25+x*i,30+y*j,25+x+x*i,30+y+y*j);   
+           setfillstyle(8,GREEN);
+           floodfill(26+x*i,31+y*j,WHITE);
+           atriCore = atriCore->sig;
+           i+=1;
+    } 
+
+     if(Archivo!=NULL)
+     {
+          while(reg)
+          { 
+             Atributo *atri = ent->prim;
+             dir = reg->dir_reg;
+             fseek(Archivo,dir,SEEK_SET);
+             
+             fread(&dir,sizeof(long),1,Archivo);      
+             fread(&dir,sizeof(long),1,Archivo);
+             i=0; 
+             while(atri)
+             {
+                 if(atri->datAtrib.tipo == 'C')
+                 {
+                     char caracter[atri->datAtrib.longitud];
+                     fread(&caracter,sizeof(caracter),1,Archivo); 
+                     outtextxy(25+x*i,60+y*j,caracter);
+                     rectangle(25+x*i,60+y*j,25+x+x*i,60+y+y*j);                
+                 }else
+                 if(atri->datAtrib.tipo == 'E')
+                 {
+                     fread(&dato,sizeof(long),1,Archivo);
+                     char nuevo[3];  itoa(dato,nuevo,10);
+                     outtextxy(25+x*i,60+y*j,nuevo);
+                     rectangle(25+x*i,60+y*j,25+x+x*i,60+y+y*j);                  
+                 }else
+                 if(atri->datAtrib.tipo == 'B')
+                 {
+                     fread(&bol,sizeof(bool),1,Archivo);
+                     if(bol == 1)
+                     outtextxy(25+x*i,60+y*j,"Verdadero");
+                     else
+                     outtextxy(25+x*i,60+y*j,"Falso");
+                     rectangle(25+x*i,60+y*j,25+x+x*i,60+y+y*j);                        
+                 } 
+                    atri = atri->sig;
+                    i+=1;
+              }
+             reg = reg->sig;
+             j+=1;
+         }
+         
+     }
+     fclose(Archivo); 
+     getch();
+}
 
 
 int main( )
@@ -128,7 +219,7 @@ char dialogBoxTipo()
      char op = '0';
      
      do
-     {
+    {
        if(ismouseclick(WM_LBUTTONDOWN))
        {
            getmouseclick(WM_LBUTTONDOWN,x,y);
@@ -165,7 +256,7 @@ bool dialogBoxBool()
      int y;
      
      do
-     {
+    {
        if(ismouseclick(WM_LBUTTONDOWN))
        {
            getmouseclick(WM_LBUTTONDOWN,x,y);
@@ -181,6 +272,44 @@ bool dialogBoxBool()
        }
               
     }while(true);
+}
+int dialogBoxLlave(Entidad *enti)
+{
+    if(enti->datEnti.dir_PK == -1)
+    {
+         bar(200,200,700,400);
+         rectangle(200,200,700,400);
+         rectangle(201,230,699,399);
+         //Sin llave
+         outtextxy(10+250,10+280,"-");
+         rectangle(10+250,10+280,80+250,40+280);
+         //llave primaria
+         outtextxy(10+250+300,10+280,"PK");
+         rectangle(10+250+300,10+280,80+250+300,40+280);
+         
+         outtextxy(410,210,"Tipo de llave");
+         int x;
+         int y;
+         
+         do
+        {
+           if(ismouseclick(WM_LBUTTONDOWN))
+           {
+               getmouseclick(WM_LBUTTONDOWN,x,y);
+               clearmouseclick(WM_LBUTTONDOWN);
+               if(x>10+250 && y>10+280 && x<80+250 && y<40+280)
+               {
+                    return 0;
+               } 
+               if(x>10+250+300 && y>10+280 && x<80+250+300 && y<40+280)
+               {
+                    enti->datEnti.dir_PK = 0;
+                    return 1;
+               }                       
+           }
+                  
+        }while(true);
+    }
 }
 void inicializaListaEntidades(Entidades *arch)
 {
@@ -459,7 +588,8 @@ void abrirArchivo(Entidades *arch)
                   }            
              corre = corre->sig;            
              }                            
-         }      
+         }
+         ///////////       
      }   
 }
 
@@ -540,6 +670,8 @@ Entidad *creaEntidad()
     nuevaEntidad->datEnti.dir_PK = -1;
     nuevaEntidad->datEnti.dir_entidad = -1;
     nuevaEntidad->datEnti.dir_sig = -1;
+    nuevaEntidad->datEnti.tipollavePk = '\0';
+    nuevaEntidad->datEnti.tamllavePk = 0;
     return nuevaEntidad;        
 }
 
@@ -803,8 +935,10 @@ void MenuModificaEntidad(Entidades *arch,Entidad *nuevo,int x,int y)
          outtextxy(78,7,"Regresar");
          
          
-         setfillstyle(SOLID_FILL,0);         
+         setfillstyle(SOLID_FILL,0);
+          
          dibujaAtributos(*nuevo); 
+         
          if(ismouseclick(WM_LBUTTONDOWN))
          {
                getmouseclick(WM_LBUTTONDOWN,x,y);
@@ -818,8 +952,10 @@ void MenuModificaEntidad(Entidades *arch,Entidad *nuevo,int x,int y)
                {
                        salir=true; 
                }         
+
          }                                   
      }while(salir==false);
+     
 }
 
 void MenuAtributo(bool *Atrubuto,Entidad *enti,int x,int y)
@@ -906,8 +1042,10 @@ Atributo *creaAtrubuto()
   nuevo->datAtrib.dir_atributo = -1;
   nuevo->datAtrib.dir_sig = -1;
   nuevo->datAtrib.tipo = 'E';
-  strcat(nuevo->datAtrib.nombre,"Atributo1"); 
+  strcat(nuevo->datAtrib.nombre,"Atributo1");
+  
   nuevo->datAtrib.longitud=4;
+  nuevo->datAtrib.llavePk = 0;
   return nuevo;
 }
 
@@ -932,11 +1070,14 @@ void agregaAtrubuto(Entidad *enti,Atributo *atri)
      {
          outtextxy(145,7,"Nombre: ");
          char Nombre[20] = "\0";
-         char Tipo[0] ; 
          lee_texto(205,7,Nombre,15); 
          strcpy(atri->datAtrib.nombre,Nombre);
          bar(145,5,500,25);
 
+         char Tipo[0] ; 
+         
+         atri->datAtrib.llavePk = dialogBoxLlave(enti);
+         
          atri->datAtrib.tipo = dialogBoxTipo();
          cleardevice();
          
@@ -950,6 +1091,12 @@ void agregaAtrubuto(Entidad *enti,Atributo *atri)
          }else
          if(atri->datAtrib.tipo == 'B')
          atri->datAtrib.longitud = 1;
+            
+         if(atri->datAtrib.llavePk == 1)   
+         {
+              enti->datEnti.tipollavePk = atri->datAtrib.tipo;
+              enti->datEnti.tamllavePk = atri->datAtrib.longitud;                                         
+         }
             
          if(enti->prim == NULL && enti->ult == NULL)
          {
@@ -981,18 +1128,24 @@ void agregaAtrubuto(Entidad *enti,Atributo *atri)
              {  
                   
                  fseek(Archivo,0,SEEK_END);
-                 atri->datAtrib.dir_atributo = ftell(Archivo);                                        
-                 fwrite(&atri->datAtrib,sizeof(DatosAtributo),1,Archivo);                                  
+                 atri->datAtrib.dir_atributo = ftell(Archivo);       
+                                 
+                 fwrite(&atri->datAtrib,sizeof(DatosAtributo),1,Archivo);
+                                   
                  enti->ult->datAtrib.dir_sig = atri->datAtrib.dir_atributo;    
                  fseek(Archivo,enti->ult->datAtrib.dir_atributo,SEEK_SET);
-                 fwrite(&enti->ult->datAtrib,sizeof(DatosAtributo),1,Archivo);    
-                 printf("Atributo agregado con exito al final\n");                   
+                 fwrite(&enti->ult->datAtrib,sizeof(DatosAtributo),1,Archivo);
+     
+                 printf("Atributo agregado con exito al final\n");  
+                 
                  enti->ult->sig = atri;   
                  atri->ant = enti->ult; 
-                 enti->ult = atri;                   
+                 enti->ult = atri;  
+                 
              } 
              else
-                 printf("No existe el archivo\n");            
+                 printf("No existe el archivo\n");
+             
              fclose(Archivo);
          }  
      }
@@ -1089,7 +1242,8 @@ Atributo *seleccionaAtributo(Entidad enti)
                       xx+=1;    
                   }       
             } 
-            return NULL;             
+            return NULL;
+               
         } 
     }while(true);
 }
@@ -1135,9 +1289,18 @@ void dibujaAtributo(DatosAtributo atri,int x,int y)
     //Longitud
     itoa(atri.longitud,cDato,10);  
     outtextxy(70+100*x,120+80*y,cDato);
-
+    
+    
+    //Tipo de llave
+    if(atri.llavePk == 1)
+    outtextxy(100+100*x,120+80*y,"PK");
+    else
+    if(atri.llavePk == 2)
+    outtextxy(100+100*x,120+80*y,"FK");
+    else
     line(105+100*x,130+80*y,115+100*x,130+80*y);
-        
+    
+    
     //Direccion al rregistro
     outtextxy(122+100*x,120+80*y,"Dir");
     
@@ -1148,7 +1311,8 @@ void dibujaAtributo(DatosAtributo atri,int x,int y)
     
     line(100+100*x,95+80*y,100+100*x,140+80*y);
     line(120+100*x,95+80*y,120+100*x,140+80*y);
-     
+ 
+    
     if(atri.dir_sig!=-1)
     {
         setcolor(YELLOW);
@@ -1180,7 +1344,8 @@ Registro *creaRegistro()
       return nuevoRegistro;         
 }
 void creaListaRegistro(Entidad *enti,Registro *reg)
-{                     
+{
+                      
      if(enti->rp == NULL && enti->ru == NULL)
      {
          enti->rp = reg;
@@ -1192,425 +1357,6 @@ void creaListaRegistro(Entidad *enti,Registro *reg)
          reg->ant = enti->ru;
          enti->ru = reg;
      }   
-}
-
-void agregaRegistro(Entidad *enti,Registro *reg)
-{        
-     if(enti->rp == NULL && enti->ru == NULL)
-     {
-         FILE *Archivo = fopen("Archivo.bet","rb+"); 
-         enti->rp = reg;
-         enti->ru = reg;
-         
-         if(Archivo !=NULL)
-         {   
-             fseek(Archivo,0,SEEK_END);
-             reg->dir_reg = ftell(Archivo);
-             
-             
-             fwrite(&reg->dir_reg ,sizeof(long),1,Archivo);
-             fwrite(&reg->dir_sig,sizeof(long),1,Archivo);
-             enti->datEnti.dir_datos = reg->dir_reg;
-              
-             Atributo *corre = enti->prim;
-             
-             /*Se guardan todos los datos que esten en los atributos*/
-             while(corre)
-             { 
-                 cleardevice();
-                 if(corre !=NULL)
-                 if(corre->datAtrib.tipo =='C')
-                 {
-                         rectangle(200,200,700,400);
-                         rectangle(201,230,699,399);
-                         outtextxy(410,210,corre->datAtrib.nombre);
-                         
-                       fseek(Archivo,0,SEEK_END);                 
-                       char cadena[corre->datAtrib.longitud];
-                       lee_texto(10+250,10+280,cadena,corre->datAtrib.longitud);  
-                       fwrite(&cadena,sizeof(cadena),1,Archivo);                                    
-                 }else
-                 if(corre !=NULL)
-                 if(corre->datAtrib.tipo =='E')
-                 {                      
-                         rectangle(200,200,700,400);
-                         rectangle(201,230,699,399);
-                         outtextxy(410,210,corre->datAtrib.nombre);
-                       
-                       fseek(Archivo,0,SEEK_END);   
-                       char cadena[corre->datAtrib.longitud];
-                       lee_texto(10+250,10+280,cadena,corre->datAtrib.longitud);
-                       int entero = atoi(cadena);  
-                       fwrite(&entero,sizeof(int),1,Archivo);                                    
-                 }else
-                 if(corre !=NULL)
-                 if(corre->datAtrib.tipo =='B')
-                 { 
-                       fseek(Archivo,0,SEEK_END);    
-                       bool entero = dialogBoxBool();  
-                       fwrite(&entero,sizeof(bool),1,Archivo);                                    
-                 }
-                        
-                 corre = corre->sig;            
-             }
-             fseek(Archivo,enti->datEnti.dir_entidad,SEEK_SET);
-             fwrite(&enti->datEnti,sizeof(DatosEntidad),1,Archivo);
-
-             printf("Registro agregado con exito primer atributo\n");          
-         }    
-         else
-             printf("No existe el archivo\n");
-         fclose(Archivo);
-     } 
-     else
-     {
-         FILE *Archivo = fopen("Archivo.bet","rb+");
-         if(Archivo != NULL)
-         {  
-              
-             fseek(Archivo,0,SEEK_END);
-             reg->dir_reg = ftell(Archivo);   
-                             
-             fwrite(&reg->dir_reg,sizeof(long),1,Archivo);
-             fwrite(&reg->dir_sig,sizeof(long),1,Archivo);
-             enti->ru->dir_sig = reg->dir_reg;
-             
-              /*Se guardan todos los datos que esten en los atributos */
-             Atributo *corre = enti->prim;
-             while(corre)
-             { 
-                 cleardevice();
-                 if(corre !=NULL)
-                 if(corre->datAtrib.tipo =='C')
-                 {
-                         rectangle(200,200,700,400);
-                         rectangle(201,230,699,399);
-                         outtextxy(410,210,corre->datAtrib.nombre);    
-                                      
-                       char cadena[corre->datAtrib.longitud];
-                       lee_texto(10+250,10+280,cadena,sizeof(cadena));  
-                       fwrite(&cadena,sizeof(cadena),1,Archivo);                                    
-                 }else
-                 if(corre !=NULL)
-                 if(corre->datAtrib.tipo =='E')
-                 {
-                       rectangle(200,200,700,400);
-                       rectangle(201,230,699,399);
-                       outtextxy(410,210,corre->datAtrib.nombre);
-                       char cadena[corre->datAtrib.longitud];
-                       lee_texto(10+250,10+280,cadena,corre->datAtrib.longitud);
-                       int entero = atoi(cadena);  
-                       fwrite(&entero,sizeof(int),1,Archivo);                                    
-                 }else
-                 if(corre !=NULL)
-                 if(corre->datAtrib.tipo =='B')
-                 {
-                      outtextxy(410,210,corre->datAtrib.nombre);
-                       int entero = dialogBoxBool();  
-                       fwrite(&entero,sizeof(bool),1,Archivo);                                    
-                 }
-                        
-                 corre = corre->sig;            
-             }              
-                
-             fseek(Archivo,enti->ru->dir_reg,SEEK_SET);
-             printf("Direccion del ultimo registro %d\n",enti->ru->dir_reg);
-             fwrite(&enti->ru->dir_reg,sizeof(long),1,Archivo);
-             fwrite(&enti->ru->dir_sig,sizeof(long),1,Archivo);
- 
-             printf("Registro agregado con exito al final\n"); 
-             
-             enti->ru->sig = reg;   
-             reg->ant = enti->ru; 
-             enti->ru = reg;  
-         } 
-         else
-             printf("No existe el archivo\n"); 
-         fclose(Archivo);
-     } 
-}
-void MenuRegistro(bool *elimina,Entidades arch,int x,int y)
-{
-    if(*elimina== false)
-    {      
-        setfillstyle(SOLID_FILL,BLACK);
-        
-        rectangle(140,32,199+140,150);
-        setfillstyle(SOLID_FILL,BLACK);
-        
-        
-        bar(140,35,199+140,60);
-        outtextxy(158,40,"Agrega Registro");      
-    
-        bar(140,65,199+140,90);
-        outtextxy(158,70,"Visualiza Registro");
-        line(140,62,199+140,62);
-
-        bar(140,95,199+140,120);
-        outtextxy(158,100,"Elimina Registro");
-        line(140,92,199+140,92);  
-        
-        bar(140,125,199+140,150);
-        outtextxy(158,130,"Modifica Registro");
-        line(140,122,199+140,122);  
-          
-        do
-        {
-            if(ismouseclick(WM_LBUTTONDOWN))
-            {
-               getmouseclick(WM_LBUTTONDOWN,x,y);
-               clearmouseclick(WM_LBUTTONDOWN); 
-               *elimina=true; 
-                if(x>140 && y>35 && x<199+140 && y<60)
-                {  
-                     Entidad *nuevo = seleccionaEntidad(arch);
-                     if(nuevo!=NULL)
-                     {
-                         if(nuevo->prim != NULL && nuevo->ult != NULL)
-                         {
-                              agregaRegistro(nuevo,creaRegistro());          
-                         }else
-                         {
-                               printf("No existen atributos en la entidad\n");
-                         }
-                     }                 
-                }
-                if(x>140 && y>65 && x<199+140 && y<90)
-                { 
-                     Entidad *nuevo = seleccionaEntidad(arch);
-                     if(nuevo!=NULL)
-                     {
-                          if(nuevo->datEnti.dir_datos!=-1)
-                             dibujaRegistros(nuevo);  
-                          else
-                              {
-                                   printf("La entidad no tiene registros");                   
-                              }      
-                     }
-                }
-                //Elimina registro
-                if(x>140 && y>95 && x<199+140 && y<120)
-                {
-                                      
-                       printf("Elimina Registro\n");
-                       Entidad *nuevo = seleccionaEntidad(arch);
-                         if(nuevo!=NULL)
-                         {
-                             Registro *reg = seleccionaRegistros(nuevo);
-                             if(reg!=NULL)
-                             eliminaRegistro(nuevo,reg);
-                         }
-                         cleardevice();        
-                }
-                //Modifica registro
-                if(x>140 && y>125 && x<199+140 && y<150)
-                {                
-                       printf("Modifica Registro\n");
-                       Entidad *nuevo = seleccionaEntidad(arch);
-                         if(nuevo!=NULL)
-                         {
-                             Registro *reg = seleccionaRegistros(nuevo);
-                             if(reg!=NULL)
-                             modificaRegistro(nuevo,reg);
-                         }
-                         cleardevice();     
-                }
-            }
-        }while(*elimina == false);
-        *elimina = false; 
-        setfillstyle(SOLID_FILL,BLACK);
-        bar(140,35,199+140,90);
-    }
-    else
-    {
-       *elimina = false;
-       setfillstyle(SOLID_FILL,BLACK);
-       bar(140,65,199+140,90);
-    } 
-}
-void dibujaRegistros(Entidad *ent)
-{
-     system("cls");   
-     cleardevice();
-     FILE *Archivo = fopen("Archivo.bet","rb");
-     long dir;
-     long dato;
-     bool bol;
-     int numAtri =0;
-     int x,y; 
-     int i,j;
-     Atributo *atriCore = ent->prim;
-     Registro *reg = ent->rp;
-     Atributo *atri = ent->prim;
-
-      
-    while(atriCore)
-    {
-           numAtri+=1;
-            atriCore = atriCore->sig;
-    }
-    atriCore = ent->prim; 
-    x=850/(numAtri);
-    i=j=0;
-    y=30;
-    while(atriCore)
-    {
-           outtextxy(25+x*i,30+y*j,atriCore->datAtrib.nombre);
-           rectangle(25+x*i,30+y*j,25+x+x*i,30+y+y*j);   
-           setfillstyle(8,GREEN);
-           floodfill(26+x*i,31+y*j,WHITE);
-           atriCore = atriCore->sig;
-           i+=1;
-    } 
-
-     if(Archivo!=NULL)
-     {
-          while(reg)
-          { 
-             Atributo *atri = ent->prim;
-             dir = reg->dir_reg;
-             fseek(Archivo,dir,SEEK_SET);
-             
-             fread(&dir,sizeof(long),1,Archivo);      
-             fread(&dir,sizeof(long),1,Archivo);
-             i=0; 
-             while(atri)
-             {
-                 if(atri->datAtrib.tipo == 'C')
-                 {
-                     char caracter[atri->datAtrib.longitud];
-                     fread(&caracter,sizeof(caracter),1,Archivo); 
-                     outtextxy(25+x*i,60+y*j,caracter);
-                     rectangle(25+x*i,60+y*j,25+x+x*i,60+y+y*j);                
-                 }else
-                 if(atri->datAtrib.tipo == 'E')
-                 {
-                     fread(&dato,sizeof(long),1,Archivo);
-                     char nuevo[3];  itoa(dato,nuevo,10);
-                     outtextxy(25+x*i,60+y*j,nuevo);
-                     rectangle(25+x*i,60+y*j,25+x+x*i,60+y+y*j);                  
-                 }else
-                 if(atri->datAtrib.tipo == 'B')
-                 {
-                     fread(&bol,sizeof(bool),1,Archivo);
-                     if(bol == 1)
-                     outtextxy(25+x*i,60+y*j,"Verdadero");
-                     else
-                     outtextxy(25+x*i,60+y*j,"Falso");
-                     rectangle(25+x*i,60+y*j,25+x+x*i,60+y+y*j);                        
-                 } 
-                    atri = atri->sig;
-                    i+=1;
-              }
-             reg = reg->sig;
-             j+=1;
-         }
-         
-     }
-     fclose(Archivo); 
-     getch();
-}
-Registro *seleccionaRegistros(Entidad *ent)
-{
-     system("cls");  
-     FILE *Archivo = fopen("Archivo.bet","rb");
-     long dir;
-     long dato;
-     bool bol;
-     int numAtri =0;
-     int x,y;
-     int x1,y1; 
-     int i,j;
-     Atributo *atriCore = ent->prim;
-     Registro *reg = ent->rp;
-     Atributo *atri = ent->prim;
-
-     cleardevice();
-    while(atriCore)
-    {
-           numAtri+=1;
-            atriCore = atriCore->sig;
-    }
-    atriCore = ent->prim; 
-    x=850/(numAtri);
-    i=j=0;
-    y=30;
-    while(atriCore)
-    {
-           outtextxy(25+x*i,30+y*j,atriCore->datAtrib.nombre);
-           rectangle(25+x*i,30+y*j,25+x+x*i,30+y+y*j);   
-           setfillstyle(8,GREEN);
-           floodfill(26+x*i,31+y*j,WHITE);
-           atriCore = atriCore->sig;
-           i+=1;
-    } 
-
-     if(Archivo!=NULL)
-     {
-          while(reg)
-          { 
-             Atributo *atri = ent->prim;
-             dir = reg->dir_reg;
-             fseek(Archivo,dir,SEEK_SET);
-             
-             fread(&dir,sizeof(long),1,Archivo);      
-             fread(&dir,sizeof(long),1,Archivo);
-             i=0; 
-             while(atri)
-             {
-                 if(atri->datAtrib.tipo == 'C')
-                 {
-                     char caracter[atri->datAtrib.longitud];
-                     fread(&caracter,sizeof(caracter),1,Archivo); 
-                     outtextxy(25+x*i,60+y*j,caracter);
-                     rectangle(25+x*i,60+y*j,25+x+x*i,60+y+y*j);                
-                 }else
-                 if(atri->datAtrib.tipo == 'E')
-                 {
-                     fread(&dato,sizeof(long),1,Archivo);
-                     char nuevo[3];  itoa(dato,nuevo,10);
-                     outtextxy(25+x*i,60+y*j,nuevo);
-                     rectangle(25+x*i,60+y*j,25+x+x*i,60+y+y*j);                  
-                 }else
-                 if(atri->datAtrib.tipo == 'B')
-                 {
-                     fread(&bol,sizeof(bool),1,Archivo);
-                     if(bol == 1)
-                     outtextxy(25+x*i,60+y*j,"Verdadero");
-                     else
-                     outtextxy(25+x*i,60+y*j,"Falso");
-                     rectangle(25+x*i,60+y*j,25+x+x*i,60+y+y*j);                        
-                 } 
-                    atri = atri->sig;
-                    i+=1;
-              }
-             reg = reg->sig;
-             j+=1;
-         }
-         fclose(Archivo); 
-     }
-    do{
-        if(ismouseclick(WM_LBUTTONDOWN))
-        {
-            getmouseclick(WM_LBUTTONDOWN,x1,y1);
-            clearmouseclick(WM_LBUTTONDOWN); 
-            int yy=30;
-            int j=0;
-            Registro *reg = ent->rp;
-            while(reg)
-            {
-                  if(x1>30 && y1>60+yy*j && x1<850 && y1<60+yy+yy*j)
-                  {
-                     fclose(Archivo); 
-                     return reg;
-                  }
-                  reg = reg->sig;
-                  j+=1;
-            } 
-            return NULL;   
-        } 
-    }while(true);
-    getch();
 }
 void eliminaRegistro(Entidad *enti,Registro *reg)
 {
@@ -1785,4 +1531,550 @@ void modificaRegistro(Entidad *enti,Registro *reg)
      }
 }
 
+void MenuRegistro(bool *elimina,Entidades arch,int x,int y)
+{
+    if(*elimina== false)
+    {      
+        setfillstyle(SOLID_FILL,BLACK);
+        
+        rectangle(140,32,199+140,150);
+        setfillstyle(SOLID_FILL,BLACK);
+        
+        
+        bar(140,35,199+140,60);
+        outtextxy(158,40,"Agrega Registro");      
+    
+        bar(140,65,199+140,90);
+        outtextxy(158,70,"Busca Registro");
+        line(140,62,199+140,62);
 
+        bar(140,95,199+140,120);
+        outtextxy(158,100,"Elimina Registro");
+        line(140,92,199+140,92);  
+        
+        bar(140,125,199+140,150);
+        outtextxy(158,130,"Modifica Registro");
+        line(140,122,199+140,122);  
+          
+        do
+        {
+            if(ismouseclick(WM_LBUTTONDOWN))
+            {
+               getmouseclick(WM_LBUTTONDOWN,x,y);
+               clearmouseclick(WM_LBUTTONDOWN); 
+               *elimina=true; 
+                if(x>140 && y>35 && x<199+140 && y<60)
+                {  
+                     Entidad *nuevo = seleccionaEntidad(arch);
+                     if(nuevo!=NULL)
+                     {
+                         if(nuevo->prim != NULL && nuevo->ult != NULL)
+                         {
+                              agregaRegistro(nuevo,creaRegistro());          
+                         }else
+                         {
+                               printf("No Registros atributos en la entidad\n");
+                         }
+                     }                 
+                }
+                if(x>140 && y>65 && x<199+140 && y<90)
+                { 
+                     Entidad *nuevo = seleccionaEntidad(arch);
+                     if(nuevo!=NULL)
+                     {
+                          if(nuevo->datEnti.dir_datos!=-1)
+                          {
+                             buscaRegistros(nuevo);  
+                          }
+                          else
+                              {
+                                   printf("La entidad no tiene registros");                   
+                              }      
+                     }
+                }
+                //Elimina registro
+                if(x>140 && y>95 && x<199+140 && y<120)
+                {
+                                      
+                       printf("Elimina Registro\n");
+                       Entidad *nuevo = seleccionaEntidad(arch);
+                         if(nuevo!=NULL)
+                         {
+                             Registro *reg = buscaRegistros(nuevo);
+                             if(reg!=NULL)
+                             eliminaRegistro(nuevo,reg);
+                         }
+                         cleardevice();        
+                }
+                //Modifica registro
+                if(x>140 && y>125 && x<199+140 && y<150)
+                {                
+                       printf("Modifica Registro\n");
+                       Entidad *nuevo = seleccionaEntidad(arch);
+                         if(nuevo!=NULL)
+                         {
+                             Registro *reg = buscaRegistros(nuevo);
+                             if(reg!=NULL)
+                             modificaRegistro(nuevo,reg);
+                         }
+                         cleardevice();     
+                }
+            }
+        }while(*elimina == false);
+        *elimina = false; 
+        setfillstyle(SOLID_FILL,BLACK);
+        bar(140,35,199+140,90);
+    }
+    else
+    {
+       *elimina = false;
+       setfillstyle(SOLID_FILL,BLACK);
+       bar(140,65,199+140,90);
+    } 
+}
+Registro *buscaRegistros(Entidad *ent)
+{   
+     FILE *Archivo = fopen("Archivo.bet","rb");
+     long dir;
+     int dato;
+     bool bol;
+     int numAtri =0;
+     int x,y; 
+     int i,j;
+     Atributo *atriCore = ent->prim;
+     Registro *reg = ent->rp;
+     Atributo *atri = ent->prim; 
+     Registro *registroN = NULL;
+     long dirReg = -1;       
+     char cadena[ent->datEnti.tamllavePk];
+     char llaveCadena[ent->datEnti.tamllavePk];
+     int llaveEntero = 0;
+     bool llaveBoleano;
+     
+    cleardevice();
+    if(ent->datEnti.tipollavePk == 'C')
+    {
+        outtextxy(410,210,"llave Primaria de tipo caracter");                
+        lee_texto(10+250,10+280,cadena,ent->datEnti.tamllavePk);  
+        registroN = buscaRegistroPk(ent,cadena);     
+        dibujaRegistro(registroN,ent->prim);        
+    }else
+    if(ent->datEnti.tipollavePk == 'E')
+    {
+        outtextxy(410,210,"llave Primaria de tipo entero");       
+        lee_texto(10+250,10+280,cadena,ent->datEnti.tamllavePk);
+        llaveEntero = atoi(cadena);  
+        registroN = buscaRegistroPk(ent,llaveEntero);     
+        dibujaRegistro(registroN,ent->prim);              
+    }else
+    if(ent->datEnti.tipollavePk == 'B')
+    {
+        outtextxy(410,210,"llave Primaria de tipo booleana");
+        llaveBoleano = dialogBoxBool();  
+        registroN = buscaRegistroPk(ent,llaveBoleano);     
+        dibujaRegistro(registroN,ent->prim);
+    }
+     fclose(Archivo);       
+     return registroN;
+}
+bool agregaRegistro(Entidad *enti,Registro *reg)
+{        
+     if(enti->rp == NULL && enti->ru == NULL)
+     {
+         FILE *Archivo = fopen("Archivo.bet","rb+"); 
+         enti->rp = reg;
+         enti->ru = reg;
+         
+         if(Archivo !=NULL)
+         {   
+             fseek(Archivo,0,SEEK_END);
+             reg->dir_reg = ftell(Archivo);
+             
+             
+             fwrite(&reg->dir_reg ,sizeof(long),1,Archivo);
+             fwrite(&reg->dir_sig,sizeof(long),1,Archivo);
+             enti->datEnti.dir_datos = reg->dir_reg;
+              
+             Atributo *corre = enti->prim;
+             
+             /*Se guardan todos los datos que esten en los atributos*/
+             while(corre)
+             { 
+                 cleardevice();
+                 if(corre !=NULL)
+                 if(corre->datAtrib.tipo =='C')
+                 {
+                         rectangle(200,200,700,400);
+                         rectangle(201,230,699,399);
+                         outtextxy(410,210,corre->datAtrib.nombre);
+                         
+                       fseek(Archivo,0,SEEK_END);                 
+                       char cadena[corre->datAtrib.longitud];
+                       lee_texto(10+250,10+280,cadena,corre->datAtrib.longitud);  
+                       fwrite(&cadena,sizeof(cadena),1,Archivo);                                    
+                 }else
+                 if(corre !=NULL)
+                 if(corre->datAtrib.tipo =='E')
+                 {                      
+                         rectangle(200,200,700,400);
+                         rectangle(201,230,699,399);
+                         outtextxy(410,210,corre->datAtrib.nombre);
+                       
+                       fseek(Archivo,0,SEEK_END);   
+                       char cadena[corre->datAtrib.longitud];
+                       lee_texto(10+250,10+280,cadena,corre->datAtrib.longitud);
+                       int entero = atoi(cadena);   
+                       fwrite(&entero,sizeof(int),1,Archivo);                                    
+                 }else
+                 if(corre !=NULL)
+                 if(corre->datAtrib.tipo =='B')
+                 { 
+                       fseek(Archivo,0,SEEK_END);    
+                       bool entero = dialogBoxBool();  
+                       fwrite(&entero,sizeof(bool),1,Archivo);                                    
+                 }
+                        
+                 corre = corre->sig;            
+             }
+             fseek(Archivo,enti->datEnti.dir_entidad,SEEK_SET);
+             fwrite(&enti->datEnti,sizeof(DatosEntidad),1,Archivo);
+
+             printf("Registro agregado con exito primer atributo\n");          
+         }    
+         else
+             printf("No existe el archivo\n");
+         fclose(Archivo);
+     } 
+     else
+     {
+         FILE *Archivo = fopen("Archivo.bet","rb+");
+         if(Archivo != NULL)
+         {  
+              
+             fseek(Archivo,0,SEEK_END);
+             reg->dir_reg = ftell(Archivo);   
+                             
+             fwrite(&reg->dir_reg,sizeof(long),1,Archivo);
+             fwrite(&reg->dir_sig,sizeof(long),1,Archivo);
+             enti->ru->dir_sig = reg->dir_reg;
+             
+              /*Se guardan todos los datos que esten en los atributos */
+             Atributo *corre = enti->prim;
+             while(corre)
+             { 
+                 cleardevice();
+                 if(corre !=NULL)
+                 if(corre->datAtrib.tipo =='C')
+                 {
+                         rectangle(200,200,700,400);
+                         rectangle(201,230,699,399);
+                         outtextxy(410,210,corre->datAtrib.nombre);    
+                                      
+                       char cadena[corre->datAtrib.longitud];
+                       char compara[corre->datAtrib.longitud];
+                       lee_texto(10+250,10+280,cadena,sizeof(corre->datAtrib.longitud)); 
+                       if(corre->datAtrib.llavePk == 1)
+                       {
+                           strcpy(compara,cadena);
+                           Registro *AUX = buscaRegistroPk(enti,compara);
+                           if(AUX!=NULL)
+                           {
+                               dibujaRegistro(AUX,enti->prim);
+                               cleardevice();
+                               outtextxy(25,60,"Elemento exixtente: Imposible Agregar");
+                               getch();
+                               return true;
+                           }
+                       }
+                       fwrite(&cadena,sizeof(cadena),1,Archivo);                                    
+                 }else
+                 if(corre !=NULL)
+                 if(corre->datAtrib.tipo =='E')
+                 {
+                       rectangle(200,200,700,400);
+                       rectangle(201,230,699,399);
+                       outtextxy(410,210,corre->datAtrib.nombre);
+                       char cadena[corre->datAtrib.longitud];
+                       
+                       lee_texto(10+250,10+280,cadena,corre->datAtrib.longitud);
+                       int entero = atoi(cadena); 
+
+                       if(corre->datAtrib.llavePk == 1)
+                       {
+                           Registro *AUX = buscaRegistroPk(enti,entero);
+                           if(AUX!=NULL)
+                           {
+                               dibujaRegistro(AUX,enti->prim);
+                               cleardevice();
+                               outtextxy(25,60,"Elemento exixtente: Imposible Agregar");
+                               getch();
+                               return true;
+                           }
+                       }
+                       fwrite(&entero,sizeof(int),1,Archivo);                                    
+                 }else
+                 if(corre !=NULL)
+                 if(corre->datAtrib.tipo =='B')
+                 {
+                      outtextxy(410,210,corre->datAtrib.nombre);
+                       bool boleano = dialogBoxBool();  
+                       if(corre->datAtrib.llavePk == 1)
+                       {
+                           Registro *AUX = buscaRegistroPk(enti,boleano);
+                           if(AUX!=NULL)
+                           {
+                               dibujaRegistro(AUX,enti->prim);
+                               cleardevice();
+                               outtextxy(25,60,"Elemento exixtente: Imposible Agregar");
+                               getch();
+                               return true;
+                           }
+                       }
+                       fwrite(&boleano,sizeof(bool),1,Archivo);                                    
+                 }                        
+                 corre = corre->sig;            
+             }                              
+             fseek(Archivo,enti->ru->dir_reg,SEEK_SET);
+             printf("Direccion del ultimo registro %d\n",enti->ru->dir_reg);
+             fwrite(&enti->ru->dir_reg,sizeof(long),1,Archivo);
+             fwrite(&enti->ru->dir_sig,sizeof(long),1,Archivo);
+ 
+             printf("Registro agregado con exito al final\n"); 
+             
+             enti->ru->sig = reg;   
+             reg->ant = enti->ru; 
+             enti->ru = reg;  
+         } 
+         else
+             printf("No existe el archivo\n"); 
+         fclose(Archivo);
+     } 
+}
+
+Registro *buscaRegistroPk(Entidad *ent,char llaveCadena[])
+{   
+     FILE *Archivo = fopen("Archivo.bet","rb");
+     int Entero = 0;
+     long dir = -1;
+     long dirReg = -1;
+     Registro *reg = ent->rp;
+     Atributo *atri = ent->prim; 
+
+
+     if(Archivo!=NULL)
+     {
+          while(reg)
+          { 
+             Atributo *atri = ent->prim;
+             dir = reg->dir_reg;
+             fseek(Archivo,dir,SEEK_SET);
+             
+             fread(&dirReg,sizeof(long),1,Archivo);      
+             fread(&dirReg,sizeof(long),1,Archivo);
+             while(atri)
+             {
+                 if(atri->datAtrib.tipo == 'C')
+                 {                                      
+                     char caracter[atri->datAtrib.longitud];
+                     fread(&caracter,sizeof(caracter),1,Archivo);
+                     if(atri->datAtrib.llavePk == 1)
+                     {                             
+                           if(strcmp(llaveCadena,caracter)==0)                             
+                              return reg;                                                           
+                     }               
+                 }else
+                 if(atri->datAtrib.tipo =='E')
+                 {
+                       int entero;
+                       fread(&entero,sizeof(int),1,Archivo);                                    
+                 }else
+                 if(atri->datAtrib.tipo =='B')
+                 {
+                       bool boleano;  
+                       fread(&boleano,sizeof(bool),1,Archivo);                                    
+                 }
+     
+                    atri = atri->sig;
+              }
+             reg = reg->sig;
+         }
+     }
+     return NULL;
+     fclose(Archivo);
+}
+Registro *buscaRegistroPk(Entidad *ent,int llaveEntero)
+{   
+     FILE *Archivo = fopen("Archivo.bet","rb");
+     int Entero = 0;
+     long dir = -1;
+     long dirReg = -1;
+     Registro *reg = ent->rp;
+     Atributo *atri = ent->prim; 
+
+
+     if(Archivo!=NULL)
+     {
+          while(reg)
+          { 
+             Atributo *atri = ent->prim;
+             dir = reg->dir_reg;
+             fseek(Archivo,dir,SEEK_SET);
+             
+             fread(&dirReg,sizeof(long),1,Archivo);      
+             fread(&dirReg,sizeof(long),1,Archivo);
+             while(atri)
+             {
+                 if(atri->datAtrib.tipo =='C')
+                 {
+                       char cadena[atri->datAtrib.longitud];
+                       fread(&cadena,sizeof(cadena),1,Archivo);                                    
+                 }else
+                 if(atri->datAtrib.tipo == 'E')
+                 {
+                     fread(&Entero,sizeof(int),1,Archivo); 
+                     if(atri->datAtrib.llavePk == 1)
+                     {                                                  
+                           if(Entero == llaveEntero)
+                              return reg;                    
+                     }                 
+                 }else
+                 if(atri->datAtrib.tipo =='B')
+                 {
+                       bool boleano;  
+                       fread(&boleano,sizeof(bool),1,Archivo);                                    
+                 }
+                    atri = atri->sig;
+              }
+             reg = reg->sig;
+         }
+     }
+     return NULL;
+     fclose(Archivo);
+}
+Registro *buscaRegistroPk(Entidad *ent,bool bol)
+{   
+     FILE *Archivo = fopen("Archivo.bet","rb");
+     int Entero = 0;
+     long dir = -1;
+     long dirReg = -1;
+     Registro *reg = ent->rp;
+     Atributo *atri = ent->prim; 
+
+
+     if(Archivo!=NULL)
+     {
+          while(reg)
+          { 
+             Atributo *atri = ent->prim;
+             dir = reg->dir_reg;
+             fseek(Archivo,dir,SEEK_SET);
+             
+             fread(&dirReg,sizeof(long),1,Archivo);      
+             fread(&dirReg,sizeof(long),1,Archivo);
+             while(atri)
+             {
+                 if(atri->datAtrib.tipo =='C')
+                 {
+                       char cadena[atri->datAtrib.longitud];
+                       fread(&cadena,sizeof(cadena),1,Archivo);                                    
+                 }else
+                 if(atri->datAtrib.tipo == 'E')
+                 {
+                     fread(&Entero,sizeof(int),1,Archivo); 
+                                     
+                 }else
+                 if(atri->datAtrib.tipo =='B')
+                 {
+                       bool boleano;  
+                       fread(&boleano,sizeof(bool),1,Archivo);   
+                       if(atri->datAtrib.llavePk == 1)
+                       {                        
+                           if(boleano == bol)
+                              return reg;                    
+                       }                                  
+                 }
+                    atri = atri->sig;
+              }
+             reg = reg->sig;
+         }
+     }
+     return NULL;
+     fclose(Archivo);
+}
+void dibujaRegistro(Registro *registroN,Atributo *prim)
+{
+     FILE *Archivo = fopen("Archivo.bet","rb");
+     Atributo *atriCore = prim;
+     int x,y;
+     int i,j;
+     long dir;
+     int numAtri = 0;
+     int entero = 0;
+     bool bol;
+     cleardevice();
+     if(registroN!=NULL)
+     { 
+        while(atriCore)
+        {
+               numAtri+=1;
+                atriCore = atriCore->sig;
+        }
+        atriCore = prim; 
+        x=850/(numAtri);
+        i=j=0;
+        y=30;
+        while(atriCore)
+        {
+               outtextxy(25+x*i,30+y*j,atriCore->datAtrib.nombre);
+               rectangle(25+x*i,30+y*j,25+x+x*i,30+y+y*j);   
+               setfillstyle(8,GREEN);
+               floodfill(26+x*i,31+y*j,WHITE);
+               atriCore = atriCore->sig;
+               i+=1;
+        }
+         Atributo *atri = prim;
+         dir = registroN->dir_reg;
+         fseek(Archivo,dir,SEEK_SET);
+         
+         fread(&dir,sizeof(long),1,Archivo);      
+         fread(&dir,sizeof(long),1,Archivo);
+         i=0; 
+         while(atri)
+         {
+             if(atri->datAtrib.tipo == 'C')
+             {                                      
+                 char caracter[atri->datAtrib.longitud];
+                 fread(&caracter,sizeof(caracter),1,Archivo); 
+                 outtextxy(25+x*i,60+y*j,caracter);
+                 rectangle(25+x*i,60+y*j,25+x+x*i,60+y+y*j);                
+             }else
+             if(atri->datAtrib.tipo == 'E')
+             {
+                 fread(&entero,sizeof(int),1,Archivo);
+                 char nuevo[3];  
+                 itoa(entero,nuevo,10);
+                 outtextxy(25+x*i,60+y*j,nuevo);
+                 rectangle(25+x*i,60+y*j,25+x+x*i,60+y+y*j);                 
+             }else
+             if(atri->datAtrib.tipo == 'B')
+             {
+                 fread(&bol,sizeof(bool),1,Archivo);
+                 if(bol == 1)
+                 outtextxy(25+x*i,60+y*j,"Verdadero");
+                 else
+                 outtextxy(25+x*i,60+y*j,"Falso");
+                 rectangle(25+x*i,60+y*j,25+x+x*i,60+y+y*j);                        
+             } 
+                atri = atri->sig;
+                i+=1;
+          }
+         j+=1;
+         getch(); 
+     } 
+     else
+     {
+         cleardevice();
+         outtextxy(25,60,"No se encontraron coinsidencias");
+         getch();        
+     }           
+}
